@@ -12,18 +12,22 @@ import {
   Layers, 
   GraduationCap,
   CheckCircle2,
-  MapPin
+  MapPin,
+  Megaphone,
+  Truck
 } from 'lucide-react';
 
 interface DriverPortalProps {
   routes: ShuttleRoute[];
   setRoutes: React.Dispatch<React.SetStateAction<ShuttleRoute[]>>;
+  onTriggerAlert: (message: string, type: string) => void;
 }
 
-const DriverPortal: React.FC<DriverPortalProps> = ({ routes, setRoutes }) => {
+const DriverPortal: React.FC<DriverPortalProps> = ({ routes, setRoutes, onTriggerAlert }) => {
   const myRoute = routes[0];
   const [activeBatch, setActiveBatch] = useState<string>('1');
   const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [showEmergencyPanel, setShowEmergencyPanel] = useState(false);
   const [newStudent, setNewStudent] = useState({
     name: '',
     className: '',
@@ -31,6 +35,12 @@ const DriverPortal: React.FC<DriverPortalProps> = ({ routes, setRoutes }) => {
     address: '',
     parentName: ''
   });
+
+  const EMERGENCY_REASONS = [
+    { id: 'breakdown', label: 'Mobil Mogok / Kendala Mesin', msg: 'Mohon maaf, armada kami mengalami kendala mesin pagi ini. Orang tua diharapkan mengantar anak secara mandiri.' },
+    { id: 'permit', label: 'Supir Izin / Berhalangan', msg: 'Mohon maaf, supir KidGo berhalangan hadir karena keperluan mendesak. Jemputan ditiadakan sementara.' },
+    { id: 'traffic', label: 'Lalu Lintas Macet Total', msg: 'Terjadi kemacetan total di rute jemputan. Estimasi jemputan akan sangat terlambat.' }
+  ];
 
   const FEES = {
     NORMAL: 200000,
@@ -80,13 +90,19 @@ const DriverPortal: React.FC<DriverPortalProps> = ({ routes, setRoutes }) => {
     }
   };
 
+  const sendEmergencyAlert = (msg: string) => {
+    if (confirm('Kirim notifikasi darurat ini ke seluruh orang tua siswa?')) {
+      onTriggerAlert(msg, 'danger');
+      setShowEmergencyPanel(false);
+    }
+  };
+
   const filteredStudents = myRoute.students.filter(s => s.batch === activeBatch);
   
   const totalCollected = myRoute.students.reduce((acc, s) => {
     return s.isPaid ? acc + FEES[s.feeType] : acc;
   }, 0);
 
-  // Siswa yang perlu perhatian (Absen, Telat, atau SIAP JEMPUT)
   const notificationStudents = myRoute.students.filter(s => 
     s.status === StudentStatus.ABSENT || 
     s.status === StudentStatus.LATE_WAKE_UP || 
@@ -95,7 +111,64 @@ const DriverPortal: React.FC<DriverPortalProps> = ({ routes, setRoutes }) => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* Header Statistik & Kloter */}
+      {/* Tombol Darurat (Quick Access) */}
+      <div className="bg-red-50 border-2 border-red-100 p-4 rounded-3xl flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-red-100 text-red-600 rounded-xl animate-pulse">
+            <Truck size={20} />
+          </div>
+          <div>
+            <h5 className="text-[10px] font-black text-red-800 uppercase tracking-widest leading-none">Pusat Kendala</h5>
+            <p className="text-xs text-red-600 font-medium">Ada masalah dengan armada?</p>
+          </div>
+        </div>
+        <button 
+          onClick={() => setShowEmergencyPanel(true)}
+          className="bg-red-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase shadow-lg shadow-red-200 hover:bg-red-700 transition-all active:scale-95 flex items-center gap-2"
+        >
+          <Megaphone size={14} /> LAPOR KENDALA
+        </button>
+      </div>
+
+      {/* Modal Emergency Panel */}
+      {showEmergencyPanel && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+           <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 animate-in zoom-in duration-300">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-red-100 text-red-600 rounded-2xl">
+                    <AlertTriangle size={24} />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900">Broadcast Darurat</h3>
+                </div>
+                <button onClick={() => setShowEmergencyPanel(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <p className="text-sm text-slate-500 font-medium mb-6">Pilih kendala yang dialami untuk memberitahu seluruh orang tua agar mereka bisa mengantar anak secara mandiri.</p>
+
+              <div className="space-y-3">
+                {EMERGENCY_REASONS.map(reason => (
+                  <button 
+                    key={reason.id}
+                    onClick={() => sendEmergencyAlert(reason.msg)}
+                    className="w-full text-left p-4 border-2 border-slate-100 rounded-2xl hover:border-red-200 hover:bg-red-50 transition-all group"
+                  >
+                    <p className="font-black text-slate-800 group-hover:text-red-700 transition-colors">{reason.label}</p>
+                    <p className="text-[10px] text-slate-400 font-medium mt-1 leading-relaxed">{reason.msg}</p>
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-8 flex flex-col gap-2">
+                 <button className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center py-2">Bantuan Teknis: 0812-3456-7890</button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Statistik & Kloter */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4 transition-all hover:shadow-md">
           <div className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl">

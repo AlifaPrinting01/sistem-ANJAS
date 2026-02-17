@@ -13,16 +13,19 @@ import {
   Phone, 
   Sparkles, 
   GraduationCap,
-  RotateCcw
+  RotateCcw,
+  AlertOctagon
 } from 'lucide-react';
 
 interface ParentPortalProps {
   student: Student;
   route: ShuttleRoute;
+  driverAlert: { active: boolean; message: string; type: string } | null;
+  onClearAlert: () => void;
   onReportAbsence: (studentId: string, status: StudentStatus) => void;
 }
 
-const ParentPortal: React.FC<ParentPortalProps> = ({ student, route, onReportAbsence }) => {
+const ParentPortal: React.FC<ParentPortalProps> = ({ student, route, driverAlert, onClearAlert, onReportAbsence }) => {
   const isEnRoute = route.status === ShuttleStatus.PICKING_UP;
   const isArrived = student.status === StudentStatus.AT_SCHOOL;
   const isAbsent = student.status === StudentStatus.ABSENT;
@@ -38,12 +41,10 @@ const ParentPortal: React.FC<ParentPortalProps> = ({ student, route, onReportAbs
 
   const handleAction = () => {
     if (isInactive) {
-      // Fitur UNDO: Jika sebelumnya lapor absen, sekarang lapor jadi masuk
       if (confirm('Batalkan status absen? Driver akan diberitahu bahwa anak Anda jadi ikut jemputan hari ini.')) {
         onReportAbsence(student.id, StudentStatus.WAITING);
       }
     } else if (student.status === StudentStatus.AT_HOME) {
-      // Fitur SIAP JEMPUT
       if (confirm('Beri sinyal ke Driver bahwa anak sudah siap di depan rumah?')) {
         onReportAbsence(student.id, StudentStatus.WAITING);
       }
@@ -51,7 +52,28 @@ const ParentPortal: React.FC<ParentPortalProps> = ({ student, route, onReportAbs
   };
 
   return (
-    <div className="max-w-md mx-auto space-y-6">
+    <div className="max-w-md mx-auto space-y-6 pb-20">
+      {/* Alert Banner Driver (Internal Page View) */}
+      {driverAlert?.active && (
+        <div className="bg-red-600 text-white p-6 rounded-3xl shadow-xl shadow-red-200 border-b-8 border-red-800 animate-in zoom-in duration-300">
+          <div className="flex items-start gap-4 mb-4">
+            <div className="p-3 bg-white/20 rounded-2xl animate-bounce">
+              <AlertOctagon size={32} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black tracking-tight leading-none mb-2">INFO DARURAT!</h3>
+              <p className="text-sm font-medium text-red-100 leading-relaxed">{driverAlert.message}</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => onReportAbsence(student.id, StudentStatus.LATE_WAKE_UP)}
+            className="w-full bg-white text-red-600 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all mb-2"
+          >
+            SAYA ANTAR SENDIRI HARI INI
+          </button>
+        </div>
+      )}
+
       {/* Profil Header */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
         <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center border-2 border-indigo-100">

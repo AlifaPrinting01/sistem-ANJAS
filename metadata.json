@@ -3,5 +3,8 @@
   "description": "Sebuah platform komprehensif untuk mengelola layanan antar-jemput sekolah, yang menampilkan optimasi rute cerdas, simulasi pelacakan waktu nyata, dan komunikasi antara orang tua dan pengemudi.",
   "requestFramePermissions": [
     "geolocation"
+  ],
+  "permissions": [
+    "notifications"
   ]
 }
