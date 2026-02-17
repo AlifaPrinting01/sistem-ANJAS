@@ -24,8 +24,8 @@ export type MonthlyFeeType = 'NORMAL' | 'HOLIDAY' | 'EXTENDED';
 export interface Student {
   id: string;
   name: string;
-  className: string; // Tambahan: Kelas
-  batch: string;     // Tambahan: Kloter (misal: "1" atau "2")
+  className: string;
+  batch: string;
   address: string;
   parentName: string;
   status: StudentStatus;
@@ -40,8 +40,16 @@ export interface ParentAccount {
   studentId: string;
 }
 
+export interface DriverAccount {
+  email: string;
+  password?: string;
+  name: string;
+  vehicleNumber: string;
+}
+
 export interface ShuttleRoute {
   id: string;
+  driverEmail: string; // Tambahan untuk relasi akun
   driverName: string;
   vehicleNumber: string;
   status: ShuttleStatus;

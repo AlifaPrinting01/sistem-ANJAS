@@ -27,6 +27,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('DASHBOARD'); 
   const [isParentLoggedIn, setIsParentLoggedIn] = useState(false);
   const [isDriverLoggedIn, setIsDriverLoggedIn] = useState(false);
+  const [loggedEmail, setLoggedEmail] = useState<string | null>(null);
   const [loggedStudent, setLoggedStudent] = useState<Student | null>(null);
   const [routes, setRoutes] = useState<ShuttleRoute[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -39,7 +40,6 @@ const App: React.FC = () => {
       setRoutes(db.getRoutes());
       setDriverAlert(db.getAlert());
       
-      // Update logged student if exists
       if (loggedStudent) {
         const freshStudent = db.getStudents().find(s => s.id === loggedStudent.id);
         if (freshStudent) setLoggedStudent(freshStudent);
@@ -56,6 +56,7 @@ const App: React.FC = () => {
     setIsParentLoggedIn(false);
     setIsDriverLoggedIn(false);
     setLoggedStudent(null);
+    setLoggedEmail(null);
     setActiveTab('DASHBOARD');
   };
 
@@ -89,7 +90,7 @@ const App: React.FC = () => {
               <Bus size={32} />
             </div>
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">KidGo</h2>
-            <p className="mt-2 text-sm text-slate-500 font-medium italic">"Database Persisten & Full Course System"</p>
+            <p className="mt-2 text-sm text-slate-500 font-medium italic">Sistem Antar Jemput Sekolah Pintar</p>
           </div>
           <div className="space-y-4">
             <button onClick={() => { setRole('DRIVER'); setActiveTab('DASHBOARD'); }} className="w-full flex items-center justify-between p-5 bg-slate-50 hover:bg-orange-50 border-2 border-slate-100 hover:border-orange-300 rounded-2xl transition-all group">
@@ -97,7 +98,7 @@ const App: React.FC = () => {
                 <div className="p-3 bg-orange-100 text-orange-600 rounded-xl group-hover:bg-orange-600 group-hover:text-white transition-colors"><Navigation size={24} /></div>
                 <div>
                   <p className="font-black text-slate-800 uppercase text-xs tracking-widest">Portal Supir</p>
-                  <p className="text-sm text-slate-500 font-medium">Atur Rute & Armada</p>
+                  <p className="text-sm text-slate-500 font-medium">Daftar & Kelola Armada</p>
                 </div>
               </div>
               <ChevronRight size={20} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
@@ -118,23 +119,29 @@ const App: React.FC = () => {
     );
   }
 
-  if (role === 'DRIVER' && !isDriverLoggedIn) return <DriverAuth onLoginSuccess={() => setIsDriverLoggedIn(true)} onBack={() => setRole(null)} />;
-  if (role === 'PARENT' && !isParentLoggedIn) return <ParentAuth students={routes[0]?.students || []} onLoginSuccess={(student) => { setLoggedStudent(student); setIsParentLoggedIn(true); }} onBack={() => setRole(null)} />;
+  if (role === 'DRIVER' && !isDriverLoggedIn) return <DriverAuth onLoginSuccess={(email) => { setLoggedEmail(email); setIsDriverLoggedIn(true); }} onBack={() => setRole(null)} />;
+  if (role === 'PARENT' && !isParentLoggedIn) return <ParentAuth students={routes.flatMap(r => r.students) || []} onLoginSuccess={(student) => { setLoggedStudent(student); setIsParentLoggedIn(true); }} onBack={() => setRole(null)} />;
 
-  const currentRoute = routes[0] || {} as ShuttleRoute;
-  const currentStudent = loggedStudent || currentRoute.students?.[0];
+  // Cari rute spesifik supir yang login
+  const currentRoute = role === 'DRIVER' 
+    ? routes.find(r => r.driverEmail === loggedEmail) || routes[0]
+    : routes.find(r => r.students.some(s => s.id === loggedStudent?.id)) || routes[0];
+
+  const currentStudent = role === 'PARENT' ? loggedStudent : (currentRoute?.students?.[0] || null);
 
   const renderContent = () => {
+    if (!currentRoute) return <div className="p-20 text-center font-bold">Memuat Data Armada...</div>;
+
     switch (activeTab) {
       case 'DASHBOARD': return <Dashboard routes={routes} setRoutes={updateRouteInDB} />;
       case 'MAIN': return role === 'DRIVER' 
         ? <DriverPortal routes={routes} setRoutes={updateRouteInDB} onTriggerAlert={triggerGlobalAlert} />
-        : <ParentPortal student={currentStudent} route={currentRoute} driverAlert={driverAlert} onClearAlert={() => { db.clearAlert(); setDriverAlert(null); }} onReportAbsence={(id, status) => db.updateStudent(id, { status })} />;
+        : <ParentPortal student={currentStudent!} route={currentRoute} driverAlert={driverAlert} onClearAlert={() => { db.clearAlert(); setDriverAlert(null); }} onReportAbsence={(id, status) => db.updateStudent(id, { status })} />;
       case 'MAP': return <NavigationMap route={currentRoute} role={role} setRoutes={updateRouteInDB} />;
       case 'SETTINGS': return <SettingsPortal 
         role={role} 
-        user={role === 'DRIVER' ? { name: currentRoute.driverName, vehicle: currentRoute.vehicleNumber } : { name: currentStudent.parentName, student: currentStudent.name }} 
-        onUpdateProfile={(name, vehicle) => role === 'DRIVER' ? db.updateRoute(currentRoute.id, { driverName: name, vehicleNumber: vehicle }) : db.updateStudent(currentStudent.id, { parentName: name })}
+        user={role === 'DRIVER' ? { name: currentRoute.driverName, vehicle: currentRoute.vehicleNumber } : { name: currentStudent?.parentName, student: currentStudent?.name }} 
+        onUpdateProfile={(name, vehicle) => role === 'DRIVER' ? db.updateRoute(currentRoute.id, { driverName: name, vehicleNumber: vehicle }) : db.updateStudent(currentStudent!.id, { parentName: name })}
       />;
       default: return <Dashboard routes={routes} setRoutes={updateRouteInDB} />;
     }
@@ -175,7 +182,7 @@ const App: React.FC = () => {
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">{sidebarOpen ? <X size={20} /> : <Menu size={20} />}</button>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-slate-900">{role === 'DRIVER' ? 'Supir' : `Wali: ${currentStudent?.name}`}</p>
+              <p className="text-sm font-bold text-slate-900">{role === 'DRIVER' ? (currentRoute?.driverName || 'Supir') : `Wali: ${currentStudent?.name}`}</p>
               <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">Online Database</p>
             </div>
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold border-2 ${role === 'DRIVER' ? 'bg-orange-100 text-orange-600 border-orange-200' : 'bg-emerald-100 text-emerald-600 border-emerald-200'}`}>{role?.[0]}</div>
