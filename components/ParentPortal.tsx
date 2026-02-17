@@ -5,153 +5,224 @@ import {
   Bus, 
   MapPin, 
   ShieldCheck, 
-  Clock, 
-  AlertCircle,
-  MessageCircle,
-  BellRing,
-  Wallet,
-  CheckCircle,
-  Info
+  Wallet, 
+  Info, 
+  XCircle, 
+  AlarmClock, 
+  CheckCircle2, 
+  Phone, 
+  Sparkles, 
+  GraduationCap,
+  RotateCcw
 } from 'lucide-react';
 
 interface ParentPortalProps {
   student: Student;
   route: ShuttleRoute;
+  onReportAbsence: (studentId: string, status: StudentStatus) => void;
 }
 
-const ParentPortal: React.FC<ParentPortalProps> = ({ student, route }) => {
-  const isEnRoute = route.status === ShuttleStatus.PICKING_UP || route.status === ShuttleStatus.DROPPING_OFF;
+const ParentPortal: React.FC<ParentPortalProps> = ({ student, route, onReportAbsence }) => {
+  const isEnRoute = route.status === ShuttleStatus.PICKING_UP;
+  const isArrived = student.status === StudentStatus.AT_SCHOOL;
+  const isAbsent = student.status === StudentStatus.ABSENT;
+  const isLate = student.status === StudentStatus.LATE_WAKE_UP;
+  const isWaiting = student.status === StudentStatus.WAITING;
+  const isInactive = isAbsent || isLate;
   
+  const FEES = {
+    NORMAL: 200000,
+    HOLIDAY: 150000,
+    EXTENDED: 250000
+  };
+
+  const handleAction = () => {
+    if (isInactive) {
+      // Fitur UNDO: Jika sebelumnya lapor absen, sekarang lapor jadi masuk
+      if (confirm('Batalkan status absen? Driver akan diberitahu bahwa anak Anda jadi ikut jemputan hari ini.')) {
+        onReportAbsence(student.id, StudentStatus.WAITING);
+      }
+    } else if (student.status === StudentStatus.AT_HOME) {
+      // Fitur SIAP JEMPUT
+      if (confirm('Beri sinyal ke Driver bahwa anak sudah siap di depan rumah?')) {
+        onReportAbsence(student.id, StudentStatus.WAITING);
+      }
+    }
+  };
+
   return (
     <div className="max-w-md mx-auto space-y-6">
-      {/* Payment Status Card - New Section */}
-      <div className={`p-5 rounded-2xl border flex items-center gap-4 shadow-sm transition-all ${
-        student.isPaid 
-          ? 'bg-emerald-50 border-emerald-100' 
-          : 'bg-amber-50 border-amber-100 animate-pulse'
+      {/* Profil Header */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center border-2 border-indigo-100">
+          <GraduationCap size={32} />
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-slate-900 leading-none">{student.name}</h2>
+          <p className="text-xs text-slate-400 mt-1 font-bold uppercase tracking-widest">Kelas {student.className} • Kloter {student.batch}</p>
+        </div>
+      </div>
+
+      {/* Banner Selesai */}
+      {isArrived && (
+        <div className="p-6 bg-emerald-600 text-white rounded-3xl shadow-xl shadow-emerald-600/20 flex flex-col items-center text-center gap-3 animate-in zoom-in duration-500">
+           <div className="p-4 bg-white/20 rounded-full">
+            <CheckCircle2 size={48} />
+           </div>
+           <div>
+             <h4 className="font-black text-2xl tracking-tight">Anak Sudah Tiba!</h4>
+             <p className="text-sm text-emerald-100 font-medium">{student.name} telah sampai di sekolah dengan selamat.</p>
+           </div>
+        </div>
+      )}
+
+      {/* Banner Notifikasi Laporan Aktif */}
+      {isInactive && (
+        <div className="p-5 bg-slate-900 text-white rounded-3xl shadow-xl flex items-center gap-4 animate-in slide-in-from-top duration-500">
+           <div className={`p-3 rounded-2xl ${isAbsent ? 'bg-red-500' : 'bg-orange-500'}`}>
+            {isAbsent ? <XCircle size={28} /> : <AlarmClock size={28} />}
+           </div>
+           <div className="flex-1">
+             <h4 className="font-bold text-base leading-none">{isAbsent ? 'Status: Izin (Absen)' : 'Status: Antar Sendiri'}</h4>
+             <p className="text-[10px] text-slate-400 mt-1 font-medium">Driver tidak akan berhenti di titik jemput Anda.</p>
+           </div>
+        </div>
+      )}
+
+      {/* TOMBOL DINAMIS: SIAP JEMPUT / UNDO ABSEN */}
+      {!isArrived && (
+        <button 
+          onClick={handleAction}
+          className={`w-full p-8 rounded-3xl shadow-2xl flex items-center justify-between group transition-all active:scale-95 animate-in zoom-in duration-300 border-4 ${
+            isWaiting 
+              ? 'bg-emerald-50 border-emerald-100 text-emerald-600 cursor-default' 
+              : isInactive
+                ? 'bg-blue-600 border-blue-500 text-white hover:bg-blue-700'
+                : 'bg-indigo-600 border-indigo-500 text-white hover:bg-indigo-700'
+          }`}
+          disabled={isWaiting}
+        >
+          <div className="flex items-center gap-5">
+            <div className={`p-4 rounded-2xl transition-transform group-hover:scale-110 ${isWaiting ? 'bg-emerald-500 text-white' : 'bg-white/20'}`}>
+              {isInactive ? <RotateCcw size={32} /> : <Sparkles size={32} />}
+            </div>
+            <div className="text-left">
+              <h4 className="font-black text-2xl leading-none">
+                {isWaiting ? 'SINYAL TERKIRIM' : isInactive ? 'JADI MASUK SEKOLAH' : 'SIAP DIJEMPUT'}
+              </h4>
+              <p className={`text-[11px] mt-1 font-black tracking-widest uppercase ${isWaiting ? 'text-emerald-500' : isInactive ? 'text-blue-200' : 'text-indigo-200'}`}>
+                {isWaiting ? 'Driver Menuju ke Lokasi Anda' : isInactive ? 'Batalkan Absen & Ikut Jemputan' : 'Tekan Saat Anak Sudah Standby'}
+              </p>
+            </div>
+          </div>
+          {!isWaiting && <CheckCircle2 size={24} className={isInactive ? "text-blue-300" : "text-indigo-300"} />}
+        </button>
+      )}
+
+      {/* Info Iuran */}
+      <div className={`p-6 rounded-3xl border-2 flex items-center gap-4 shadow-sm ${
+        student.isPaid ? 'bg-white border-slate-100' : 'bg-amber-50 border-amber-200 animate-pulse'
       }`}>
-        <div className={`p-3 rounded-xl ${student.isPaid ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
+        <div className={`p-3 rounded-2xl ${student.isPaid ? 'bg-slate-100 text-slate-400' : 'bg-amber-500 text-white shadow-lg'}`}>
           <Wallet size={24} />
         </div>
         <div className="flex-1">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Iuran Bulanan (Rp 200rb)</p>
-          <h4 className={`font-bold text-lg ${student.isPaid ? 'text-emerald-700' : 'text-amber-700'}`}>
-            {student.isPaid ? 'Pembayaran Lunas' : 'Belum Terbayar'}
-          </h4>
-          {!student.isPaid && <p className="text-[10px] text-amber-600 font-medium italic">Silakan hubungi Driver untuk pembayaran</p>}
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Iuran Bulanan ({student.feeType})</p>
+          <h4 className="font-black text-lg text-slate-900">Rp {FEES[student.feeType].toLocaleString('id-ID')}</h4>
+          <span className={`text-[10px] font-black ${student.isPaid ? 'text-emerald-600' : 'text-amber-600'}`}>
+            {student.isPaid ? 'PEMBAYARAN LUNAS' : 'MENUNGGU PEMBAYARAN'}
+          </span>
         </div>
-        {student.isPaid && <CheckCircle size={24} className="text-emerald-500" />}
         {!student.isPaid && <Info size={24} className="text-amber-500" />}
       </div>
 
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Status Kehadiran</p>
-            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{student.name}</h2>
-          </div>
-          <button className="p-2 bg-slate-50 text-slate-400 rounded-full hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
-            <BellRing size={20} />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-4 p-4 bg-emerald-50 border border-emerald-100 rounded-xl mb-6 shadow-sm">
-          <div className="p-3 bg-emerald-500 text-white rounded-full shadow-lg shadow-emerald-500/20">
-            <ShieldCheck size={24} />
-          </div>
-          <div>
-            <h4 className="font-bold text-emerald-900">
-              {student.status === StudentStatus.ON_BOARD ? 'Dalam Kendaraan' : 
-               student.status === StudentStatus.AT_SCHOOL ? 'Sudah di Sekolah' : 
-               'Menunggu Penjemputan'}
-            </h4>
-            <p className="text-xs text-emerald-600 font-medium">Terakhir diperbarui: Baru saja</p>
-          </div>
-        </div>
-
-        <div className="space-y-6 relative before:content-[''] before:absolute before:left-4 before:top-4 before:bottom-4 before:w-0.5 before:bg-slate-100">
-          <TimelineItem 
-            active={true}
-            icon={<MapPin size={14} />} 
-            label="Titik Jemput (Rumah)" 
-            time="06:45 WIB" 
-            sub="Selesai" 
-            completed={student.status !== StudentStatus.AT_HOME}
-          />
-          <TimelineItem 
-            active={student.status === StudentStatus.ON_BOARD}
-            icon={<Bus size={14} />} 
-            label="Perjalanan" 
-            time={isEnRoute ? "Sedang Jalan" : "Menunggu"} 
-            sub={isEnRoute ? "Driver: Pak Jajang" : "Estimasi mulai 06:40"}
-            completed={student.status === StudentStatus.AT_SCHOOL}
-          />
-          <TimelineItem 
-            active={student.status === StudentStatus.AT_SCHOOL}
-            icon={<Clock size={14} />} 
-            label="Tiba di Sekolah" 
-            time="07:15 WIB" 
-            sub="Target Tiba" 
-            completed={student.status === StudentStatus.AT_SCHOOL}
-          />
-        </div>
-      </div>
-
-      <div className="bg-slate-900 text-white p-6 rounded-2xl border border-slate-800 shadow-2xl">
-        <h3 className="font-bold mb-4 flex items-center gap-2">
-          <Bus size={18} className="text-indigo-400" />
-          Info Armada & Driver
-        </h3>
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-xl font-bold border-2 border-slate-700 shadow-lg">
-            J
-          </div>
-          <div className="flex-1">
-            <h4 className="font-bold">{route.driverName}</h4>
-            <p className="text-xs text-slate-400">{route.vehicleNumber} • Rating 4.9 ⭐</p>
-          </div>
-          <button className="p-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all shadow-lg shadow-indigo-600/20 active:scale-95">
-            <MessageCircle size={20} />
-          </button>
-        </div>
+      {/* Monitoring Kedatangan */}
+      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
+        <h3 className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-6">Proses Jemputan</h3>
         
-        <div className="grid grid-cols-2 gap-3">
-          <InfoBox label="Kecepatan" value="35 km/h" />
-          <InfoBox label="Estimasi Tiba" value="12 mnt" highlight />
+        <div className="space-y-8 relative before:content-[''] before:absolute before:left-5 before:top-4 before:bottom-4 before:w-0.5 before:bg-slate-100">
+          <TimelineItem 
+            active={!isInactive && !isArrived}
+            icon={<MapPin size={16} />} 
+            label="Penjemputan" 
+            time={`Kloter ${student.batch}`} 
+            sub={isInactive ? "Dilewati Sesuai Laporan" : student.status === StudentStatus.ON_BOARD || isArrived ? "Anak Sudah di Mobil" : "Sedang Menjemput"} 
+            completed={student.status === StudentStatus.ON_BOARD || isArrived}
+          />
+          <TimelineItem 
+            active={isEnRoute}
+            icon={<Bus size={16} />} 
+            label="Dalam Perjalanan" 
+            time={isEnRoute ? "Sedang Jalan" : "Menuju Sekolah"} 
+            sub={isArrived ? "Perjalanan Selesai" : `Driver: ${route.driverName}`}
+            completed={isArrived}
+          />
+          <TimelineItem 
+            active={isArrived}
+            icon={<ShieldCheck size={16} />} 
+            label="Sampai Sekolah" 
+            time="Tujuan" 
+            sub={isArrived ? "Hadir di Sekolah" : "Belum Tiba"} 
+            completed={isArrived}
+          />
         </div>
+
+        {!isInactive && !isArrived && !isWaiting && (
+          <div className="mt-10 pt-8 border-t border-slate-100 grid grid-cols-2 gap-3">
+             <button 
+              onClick={() => { if(confirm('Lapor telat? Supir akan melewati Anda.')) onReportAbsence(student.id, StudentStatus.LATE_WAKE_UP); }}
+              className="flex flex-col items-center gap-2 p-4 bg-orange-50 text-orange-600 rounded-2xl hover:bg-orange-100 transition-all"
+            >
+              <AlarmClock size={20} />
+              <span className="text-[10px] font-black uppercase">Telat</span>
+            </button>
+            <button 
+              onClick={() => { if(confirm('Lapor tidak masuk hari ini?')) onReportAbsence(student.id, StudentStatus.ABSENT); }}
+              className="flex flex-col items-center gap-2 p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-100 transition-all"
+            >
+              <XCircle size={20} />
+              <span className="text-[10px] font-black uppercase tracking-tighter">Izin</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center gap-3 p-4 bg-orange-50 border border-orange-100 rounded-xl shadow-sm">
-        <AlertCircle size={20} className="text-orange-500 shrink-0" />
-        <p className="text-sm text-orange-700 font-medium">Harap stand-by di titik jemput 5 menit lebih awal untuk kelancaran rute.</p>
+      {/* Info Armada */}
+      <div className="bg-slate-900 text-white p-8 rounded-3xl border border-slate-800 shadow-2xl overflow-hidden relative group">
+        <h3 className="font-bold mb-6 flex items-center gap-2 text-indigo-400 uppercase text-[10px] tracking-widest">
+          <Bus size={14} /> INFORMASI SUPIR
+        </h3>
+        <div className="flex items-center gap-5">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-3xl font-black border-2 border-indigo-400/30">J</div>
+          <div className="flex-1">
+            <h4 className="font-black text-xl tracking-tight">{route.driverName}</h4>
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-widest">{route.vehicleNumber}</p>
+          </div>
+          <a href={`tel:${"0812345678"}`} className="p-4 bg-slate-800 text-indigo-400 rounded-2xl border border-slate-700 active:scale-95 transition-transform">
+            <Phone size={24} />
+          </a>
+        </div>
       </div>
     </div>
   );
 };
 
 const TimelineItem = ({ icon, label, time, sub, active, completed }: any) => (
-  <div className="flex gap-4 relative">
-    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 transition-colors duration-500 ${
-      completed ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 
-      active ? 'bg-indigo-500 text-white animate-pulse' : 'bg-slate-100 text-slate-400'
+  <div className="flex gap-6 relative">
+    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 z-10 transition-all duration-500 border-2 ${
+      completed ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg' : 
+      active ? 'bg-indigo-600 border-indigo-600 text-white animate-pulse shadow-lg' : 
+      'bg-white border-slate-100 text-slate-300'
     }`}>
       {icon}
     </div>
-    <div>
+    <div className="flex-1">
       <div className="flex items-center gap-2">
-        <p className={`font-bold text-sm ${completed || active ? 'text-slate-900' : 'text-slate-400'}`}>{label}</p>
-        {completed && <span className="text-[10px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full font-bold">Done</span>}
+        <p className={`font-black text-base tracking-tight ${completed || active ? 'text-slate-900' : 'text-slate-300'}`}>{label}</p>
       </div>
-      <p className={`text-xs ${active ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}>{time}</p>
-      <p className="text-[10px] text-slate-400 italic mt-0.5">{sub}</p>
+      <p className={`text-[11px] font-bold ${active ? 'text-indigo-600' : 'text-slate-400'}`}>{time}</p>
+      <p className="text-[10px] text-slate-400 font-medium italic mt-0.5">{sub}</p>
     </div>
-  </div>
-);
-
-const InfoBox = ({ label, value, highlight }: any) => (
-  <div className="p-4 bg-slate-800 rounded-xl border border-slate-700">
-    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">{label}</p>
-    <p className={`font-bold text-lg ${highlight ? 'text-indigo-400' : 'text-white'}`}>{value}</p>
   </div>
 );
 

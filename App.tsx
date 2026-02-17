@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
-import { UserRole, ShuttleStatus, StudentStatus, ShuttleRoute, Student } from './types';
+import { UserRole, ShuttleStatus, StudentStatus, ShuttleRoute, Student, MonthlyFeeType } from './types';
 import DriverPortal from './components/DriverPortal';
 import ParentPortal from './components/ParentPortal';
 import ParentAuth from './components/ParentAuth';
+import DriverAuth from './components/DriverAuth';
 import NavigationMap from './components/NavigationMap';
 import SettingsPortal from './components/SettingsPortal';
 import Dashboard from './components/Dashboard';
@@ -20,10 +21,10 @@ import {
 } from 'lucide-react';
 
 const INITIAL_STUDENTS: Student[] = [
-  { id: '1', name: 'Budi Santoso', address: 'Jl. Melati No. 5', parentName: 'Bp. Santoso', status: StudentStatus.AT_HOME, isPaid: true },
-  { id: '2', name: 'Siti Aminah', address: 'Jl. Mawar No. 12', parentName: 'Ibu Aminah', status: StudentStatus.AT_HOME, isPaid: false },
-  { id: '3', name: 'Andi Wijaya', address: 'Komp. Hijau B3', parentName: 'Bp. Wijaya', status: StudentStatus.AT_HOME, isPaid: true },
-  { id: '4', name: 'Lani Putri', address: 'Jl. Kenanga No. 8', parentName: 'Ibu Lani', status: StudentStatus.AT_HOME, isPaid: false },
+  { id: '1', name: 'Budi Santoso', className: '3-A', batch: '1', address: 'Jl. Melati No. 5', parentName: 'Bp. Santoso', status: StudentStatus.AT_HOME, isPaid: true, feeType: 'NORMAL' },
+  { id: '2', name: 'Siti Aminah', className: '2-B', batch: '1', address: 'Jl. Mawar No. 12', parentName: 'Ibu Aminah', status: StudentStatus.AT_HOME, isPaid: false, feeType: 'EXTENDED' },
+  { id: '3', name: 'Andi Wijaya', className: '4-C', batch: '2', address: 'Komp. Hijau B3', parentName: 'Bp. Wijaya', status: StudentStatus.AT_HOME, isPaid: true, feeType: 'HOLIDAY' },
+  { id: '4', name: 'Lani Putri', className: '1-A', batch: '2', address: 'Jl. Kenanga No. 8', parentName: 'Ibu Lani', status: StudentStatus.AT_HOME, isPaid: false, feeType: 'NORMAL' },
 ];
 
 const INITIAL_ROUTES: ShuttleRoute[] = [
@@ -41,6 +42,7 @@ const App: React.FC = () => {
   const [role, setRole] = useState<UserRole | null>(null);
   const [activeTab, setActiveTab] = useState('DASHBOARD'); 
   const [isParentLoggedIn, setIsParentLoggedIn] = useState(false);
+  const [isDriverLoggedIn, setIsDriverLoggedIn] = useState(false);
   const [loggedStudent, setLoggedStudent] = useState<Student | null>(null);
   const [routes, setRoutes] = useState<ShuttleRoute[]>(INITIAL_ROUTES);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -48,8 +50,20 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setRole(null);
     setIsParentLoggedIn(false);
+    setIsDriverLoggedIn(false);
     setLoggedStudent(null);
     setActiveTab('DASHBOARD');
+  };
+
+  const updateStudentData = (studentId: string, updates: Partial<Student>) => {
+    setRoutes(prev => prev.map(route => ({
+      ...route,
+      students: route.students.map(s => s.id === studentId ? { ...s, ...updates } : s)
+    })));
+    // Jika orang tua yang sedang login mengupdate datanya sendiri
+    if (loggedStudent && loggedStudent.id === studentId) {
+      setLoggedStudent(prev => prev ? { ...prev, ...updates } : null);
+    }
   };
 
   if (!role) {
@@ -101,6 +115,10 @@ const App: React.FC = () => {
     );
   }
 
+  if (role === 'DRIVER' && !isDriverLoggedIn) {
+    return <DriverAuth onLoginSuccess={() => setIsDriverLoggedIn(true)} onBack={() => setRole(null)} />;
+  }
+
   if (role === 'PARENT' && !isParentLoggedIn) {
     return (
       <ParentAuth 
@@ -123,11 +141,15 @@ const App: React.FC = () => {
       case 'MAIN':
         return role === 'DRIVER' 
           ? <DriverPortal routes={routes} setRoutes={setRoutes} />
-          : <ParentPortal student={currentStudent} route={routes[0]} />;
+          : <ParentPortal 
+              student={currentStudent} 
+              route={routes[0]} 
+              onReportAbsence={(id, status) => updateStudentData(id, { status })} 
+            />;
       case 'MAP':
         return <NavigationMap route={routes[0]} role={role} setRoutes={setRoutes} />;
       case 'SETTINGS':
-        return <SettingsPortal role={role} user={role === 'DRIVER' ? { name: 'Pak Jajang' } : { name: currentStudent.parentName, student: currentStudent.name }} />;
+        return <SettingsPortal role={role} user={role === 'DRIVER' ? { name: routes[0].driverName } : { name: currentStudent.parentName, student: currentStudent.name }} />;
       default:
         return <Dashboard routes={routes} setRoutes={setRoutes} />;
     }
