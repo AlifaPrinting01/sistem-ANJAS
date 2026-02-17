@@ -1,10 +1,10 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Initialize Gemini API client directly with process.env.API_KEY
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-
 export const getSmartRouteAdvice = async (students: any[], trafficConditions: string) => {
+  // Inisialisasi dilakukan di dalam fungsi untuk memastikan API_KEY terbaru selalu digunakan
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -36,9 +36,11 @@ export const getSmartRouteAdvice = async (students: any[], trafficConditions: st
 
     const text = response.text;
     if (!text) return null;
-    return JSON.parse(text);
+    
+    // Membersihkan teks dari kemungkinan karakter aneh sebelum parsing
+    return JSON.parse(text.trim());
   } catch (error) {
-    console.error("Gemini Error:", error);
+    console.error("Gemini AI Optimization Error:", error);
     return null;
   }
 };
